@@ -1,73 +1,93 @@
 #include <iostream>
-#include <cstring>
 #include <vector>
 #include <fstream>
+#include <set>
 
 using namespace std;
 
-int main(int argc, char* argv[])
-{
+// Recursive function to trace back the solution
+void traceback(const vector<vector<int>>& M, const vector<int>& C, int i, int j, set<pair<int, int>>& result) {
+    if (i >= j) return; // Base case: no chords in this range
+    
+    int k = C[j];
+    
+    if (k == -1 || k < i || k > j) {
+        // No chord for `j`, so move to the previous position
+        traceback(M, C, i, j - 1, result);
+    }
+    else if (k == i) {
+        // Chord between i and j is part of the subset
+        result.insert({i, j});
+        traceback(M, C, i + 1, j - 1, result); // Move inside
+    }
+    else {
+        // Decision point: choose the maximum subset
+        if (M[i][j] == M[i][j-1]) {
+            traceback(M, C, i, j - 1, result);
+        }
+        else {
+            result.insert({k, j});
+            traceback(M, C, i, k - 1, result);
+            traceback(M, C, k + 1, j - 1, result);
+        }
+    }
+}
+
+int main(int argc, char* argv[]) {
     if(argc != 3) {
-       return 0;
+       cerr << "Usage: " << argv[0] << " <input file> <output file>" << endl;
+       return 1;
     }
 
     //////////// read the input file /////////////
-    
-    char buffer[200];
     fstream fin(argv[1]);
     fstream fout;
-    fout.open(argv[2],ios::out);
-    fin.getline(buffer,200);
-    fin.getline(buffer,200);
+    fout.open(argv[2], ios::out);
     int vertice, start, end, junk;
     fin >> vertice;
-    int num_chords = vertice/2;
+    int num_chords = vertice / 2;
     vector<int> C(vertice, -1); // store the chords, index is the end, value is the start, -1 means no chord
+    
     for(int i = 0; i < num_chords; i++) {
         fin >> start >> end;
         C[end] = start;
     }
     fin >> junk; // should be 0
-    
+
     //////////// the algorithm part ////////////////
-    vector<vector<int>> M; // dp table
-    vector<int> used_chords; // store the used chords
-    for(int i = 0; i < vertice; i++) {
-        vector<int> temp;
-        for(int j = 0; j < vertice; j++) {
-            temp.push_back(0);
-        }
-        M.push_back(temp);
-    }
+    vector<vector<int>> M(vertice, vector<int>(vertice, 0)); // dp table
 
     for(int l = 1; l < vertice; l++) {
         for(int i = 0; i < vertice - l; i++) {
             int j = i + l;
             int k = C[j];
-            if(k > i && k < j){
-                M[i][j] = M[i][j-1];
-            }
-            else if (k == i){
-                M[i][j] = M[i+1][j-1] + 1;
-                used_chords.push_back(j);
+            if (k != -1) { // if there is a chord
+                if (k < i || k > j) { // if the chord is not in the range
+                    M[i][j] = M[i][j-1];
+                }
+                else if (k == i) { // if the chord is the first chord
+                    M[i][j] = M[i+1][j-1] + 1;
+                }
+                else { // if the chord is in the range
+                    M[i][j] = max(M[i][j-1], M[i][k-1] + M[k+1][j-1] + 1);
+                }
             }
             else {
-                if(M[i][j-1] > M[i][k-1] + M[k+1][j-1] + 1)
-                    M[i][j] = M[i][j-1];
-                else{
-                    M[i][j] = M[i][k-1] + M[k+1][j-1] + 1;
-                    used_chords.push_back(j);
-                }
+                M[i][j] = M[i][j-1]; // No chord at endpoint `j`
             }
         }
     }
 
+    // Traceback to find the actual chords in the maximum planar subset
+    set<pair<int, int>> result;
+    traceback(M, C, 0, vertice - 1, result);
 
     //////////// write the output file ///////////
-    fout << M[0][vertice-1] << endl;
-    for(int i = 0; i < used_chords.size(); i++) {
-        fout << C[used_chords[i]] << " " << used_chords[i] << endl;
+    fout << M[0][vertice - 1] << endl;
+    for (const auto& p : result) {
+        fout << p.first << " " << p.second << endl;
     }
+
     fin.close();
     fout.close();
     return 0;
