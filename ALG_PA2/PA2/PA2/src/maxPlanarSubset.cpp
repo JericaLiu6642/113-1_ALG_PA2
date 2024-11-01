@@ -2,6 +2,7 @@
 #include <vector>
 #include <fstream>
 #include <set>
+#include <iomanip>
 
 using namespace std;
 
@@ -11,7 +12,7 @@ void traceback(const vector<vector<int>>& M, const vector<int>& C, int i, int j,
     
     int k = C[j];
     
-    if (k == -1 || k < i || k > j) {
+    if (k < i || k > j) {
         // No chord for `j`, so move to the previous position
         traceback(M, C, i, j - 1, result);
     }
@@ -28,7 +29,7 @@ void traceback(const vector<vector<int>>& M, const vector<int>& C, int i, int j,
         else {
             result.insert({k, j});
             traceback(M, C, i, k - 1, result);
-            traceback(M, C, k + 1, j - 1, result);
+            traceback(M, C, k + 1, j, result);
         }
     }
 }
@@ -51,6 +52,7 @@ int main(int argc, char* argv[]) {
     for(int i = 0; i < num_chords; i++) {
         fin >> start >> end;
         C[end] = start;
+        C[start] = end;
     }
     fin >> junk; // should be 0
 
@@ -61,19 +63,14 @@ int main(int argc, char* argv[]) {
         for(int i = 0; i < vertice - l; i++) {
             int j = i + l;
             int k = C[j];
-            if (k != -1) { // if there is a chord
-                if (k < i || k > j) { // if the chord is not in the range
-                    M[i][j] = M[i][j-1];
-                }
-                else if (k == i) { // if the chord is the first chord
-                    M[i][j] = M[i+1][j-1] + 1;
-                }
-                else { // if the chord is in the range
-                    M[i][j] = max(M[i][j-1], M[i][k-1] + M[k+1][j-1] + 1);
-                }
+            if (k < i || k > j) { // if the chord is not in the range
+                M[i][j] = M[i][j-1];
             }
-            else {
-                M[i][j] = M[i][j-1]; // No chord at endpoint `j`
+            else if (k == i) { // if the chord is the first chord
+                M[i][j] = M[i+1][j-1] + 1;
+            }
+            else { // if the chord is in the range
+                M[i][j] = max(M[i][j-1], M[i][k-1] + M[k+1][j-1] + 1);
             }
         }
     }
